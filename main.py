@@ -1,12 +1,11 @@
-"""
-Platformer Game
-"""
+from collections import defaultdict
 import arcade
 
 # Constants
 SCREEN_WIDTH = 700
 SCREEN_HEIGHT = 700
 SCREEN_TITLE = 'Sokoban 1'
+SPEED = 5
 
 IMAGES = {
     'player': 'assets/images/player_05.png',
@@ -38,11 +37,14 @@ class MyGame(arcade.Window):
         self.ground_list = None
         self.box_list = None
         self.wall_list = None
+        self.wall_map = defaultdict(lambda: defaultdict(int))
         self.target_list = None
         self.player_list = None
 
         # Separate variable that holds the player sprite
         self.player_sprite = None
+
+        self.physics = None
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
 
@@ -56,6 +58,7 @@ class MyGame(arcade.Window):
 
         # set up the player and the player's position
         self.player_sprite = arcade.Sprite(IMAGES['player'], SCALING['player'])
+        self.player_sprite.movement = {'key': None, 'end': None}
         self.player_sprite.center_x = TILE_SIZE/2
         self.player_sprite.center_y = TILE_SIZE/2
         self.player_list.append(self.player_sprite)
@@ -69,34 +72,36 @@ class MyGame(arcade.Window):
                 self.ground_list.append(ground)
 
         wall_coordinates = [
-            [100, 100],
-            [200, 200],
+            [25 + 100, 25 + 100],
+            [25 + 200, 25 + 200],
+            [25 + 200, 25 + 0],
         ]
         for coord in wall_coordinates:
             wall = arcade.Sprite(IMAGES['wall'], SCALING['wall'])
             wall.position = coord
             self.wall_list.append(wall)
-
+            self.wall_map[coord[0]][coord[1]] = 1
         box_coordinates = [
-            [500, 500],
-            [400, 400],
+            [25 + 500, 25 + 500],
+            [25 + 400, 25 + 400],
         ]
         for coord in box_coordinates:
             box = arcade.Sprite(IMAGES['box'], SCALING['box'])
             box.position = coord
             self.box_list.append(box)
-
         target_coordinates = [
-            [300, 400],
-            [500, 600],
+            [25 + 300, 25 + 400],
+            [25 + 500, 25 + 600],
         ]
         for coord in target_coordinates:
             target = arcade.Sprite(IMAGES['target'], SCALING['target'])
             target.position = coord
             self.target_list.append(target)
+        self.physics = arcade.PhysicsEngineSimple(
+            self.player_sprite,
+            self.wall_list)
 
     def on_draw(self):
-        """ Render the screen"""
         arcade.start_render()
         # Code to draw the screen goes here
         self.ground_list.draw()
@@ -104,6 +109,52 @@ class MyGame(arcade.Window):
         self.box_list.draw()
         self.target_list.draw()
         self.player_list.draw()
+
+    def on_key_press(self, key, modifiers):
+        if self.player_sprite.change_y or self.player_sprite.change_x:
+            return
+        if key == arcade.key.UP:
+            end = self.player_sprite.center_y + TILE_SIZE
+            if self.wall_map[self.player_sprite.center_x][end]:
+                return
+            self.player_sprite.movement = {'key': key, 'end': end}
+            self.player_sprite.change_y = SPEED
+        elif key == arcade.key.DOWN:
+            end = self.player_sprite.center_y - TILE_SIZE
+            if self.wall_map[self.player_sprite.center_x][end]:
+                return
+            self.player_sprite.movement = {'key': key, 'end': end}
+            self.player_sprite.change_y = -SPEED
+        elif key == arcade.key.LEFT:
+            end = self.player_sprite.center_x - TILE_SIZE
+            if self.wall_map[end][self.player_sprite.center_y]:
+                return
+            self.player_sprite.movement = {'key': key, 'end': end}
+            self.player_sprite.change_x = -SPEED
+        elif key == arcade.key.RIGHT:
+            end = self.player_sprite.center_x + TILE_SIZE
+            if self.wall_map[end][self.player_sprite.center_y]:
+                return
+            self.player_sprite.movement = {'key': key, 'end': end}
+            self.player_sprite.change_x = SPEED
+
+    def update(self, delta_time):
+        # Move the player with the physics engine
+        self.physics.update()
+        key = self.player_sprite.movement['key']
+        end = self.player_sprite.movement['end']
+        if key == arcade.key.UP and self.player_sprite.center_y >= end:
+            self.player_sprite.change_y = 0
+            self.player_sprite.center_y = end
+        elif key == arcade.key.DOWN and self.player_sprite.center_y <= end:
+            self.player_sprite.change_y = 0
+            self.player_sprite.center_y = end
+        elif key == arcade.key.LEFT and self.player_sprite.center_x <= end:
+            self.player_sprite.change_x = 0
+            self.player_sprite.center_x = end
+        elif key == arcade.key.RIGHT and self.player_sprite.center_x >= end:
+            self.player_sprite.change_x = 0
+            self.player_sprite.center_x = end
 
 
 def main():
