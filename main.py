@@ -6,6 +6,7 @@ SCREEN_WIDTH = 700
 SCREEN_HEIGHT = 700
 SCREEN_TITLE = 'Sokoban 1'
 SPEED = 5
+UPDATES_PER_FRAME = 5
 
 IMAGES = {
     'player': 'assets/images/player_05.png',
@@ -36,6 +37,7 @@ class MyGame(arcade.Window):
         # go into a list.
         self.ground_list = None
         self.box_list = None
+        self.box_map = defaultdict(lambda: defaultdict(lambda: None))
         self.wall_list = None
         self.wall_map = defaultdict(lambda: defaultdict(int))
         self.target_list = None
@@ -89,6 +91,7 @@ class MyGame(arcade.Window):
             box = arcade.Sprite(IMAGES['box'], SCALING['box'])
             box.position = coord
             self.box_list.append(box)
+            self.box_map[coord[0]][coord[1]] = box
         target_coordinates = [
             [25 + 300, 25 + 400],
             [25 + 500, 25 + 600],
@@ -117,6 +120,17 @@ class MyGame(arcade.Window):
             end = self.player_sprite.center_y + TILE_SIZE
             if self.wall_map[self.player_sprite.center_x][end]:
                 return
+            if (sprite := self.box_map[self.player_sprite.center_x][end]):
+                x = sprite.center_x
+                y = sprite.center_y
+
+                sprite.center_y += TILE_SIZE
+                self.box_map[x][y] = None
+
+                x = sprite.center_x
+                y = sprite.center_y
+                self.box_map[x][y] = sprite
+
             self.player_sprite.movement = {'key': key, 'end': end}
             self.player_sprite.change_y = SPEED
         elif key == arcade.key.DOWN:
